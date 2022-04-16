@@ -1,0 +1,8 @@
+apiVersion: v1
+kind: ConfigMap
+
+metadata:
+  name: mongo-config # Arbitrary name
+
+data: # Contents of the actual ConfigMap
+  mongo-url: mongo-service # URL Of the database. We use the name of the service we will create for the MongoDB app

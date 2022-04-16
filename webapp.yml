@@ -1,0 +1,72 @@
+apiVersion: apps/v1
+kind: Deployment
+
+metadata:
+  name: webapp-deployment
+  labels: 
+    app: webapp
+
+spec:
+  replicas: 1 # How many pods do we want.
+  
+  selector: # Label selectors, let's Kubernetes know which Pods belong to which Deployment 
+    matchLabels: 
+      app: webapp # All the pods that match this label, belong to this deployment. 
+
+  template: # Blueprint for the pod / configuration for the pod  
+    
+    metadata:
+      labels: # Required field. Pods can have different names but share the same label
+        app: webapp
+
+    spec:
+      containers:
+      - name: webapp # Name of the container
+        image: nanajanashia/k8s-demo-app:v1.0 # Found in Docker Hub documentation
+        
+        ports:
+        - containerPort: 3000 # Found in Docker Hub documentation. NodeJS app listening in port 3000
+
+        env:
+        # These secrets are required to start the pod.
+        # [START MongoDB_secrets]
+        - name: USER_NAME
+          valueFrom: 
+            secretKeyRef:
+              name: mongo-secret
+              key: mongo-user
+
+        - name: USER_PWD
+          valueFrom: 
+            secretKeyRef:
+              name: mongo-secret
+              key: mongo-password
+        # [END MongoDB_secrets]
+
+        - name: DB_URL
+          valueFrom: 
+            configMapKeyRef:
+              name: mongo-config
+              key: mongo-url
+
+--- # YAML Syntax. We can use this to have multiple YAML configs in 1 file
+
+apiVersion: v1
+kind: Service
+
+metadata:
+  name: webapp-service # Arbitrary name. Endpoint we will use to access the web app. 
+  # Needs to be the same one in mongo-config.yml
+
+spec:
+  type: NodePort # External Service Type. Default is ClusterIP (internal).
+  # Allows the service to be accessible via the browser using. <NodeIP:NodePort>
+
+  selector: # Service needs to forward the request that it gets to its endpoint pods.
+    app: webapp # This needs to match the name of the pods that belong to the service
+  
+  ports:
+    - protocol: TCP
+      port: 3000 # Can be any port we decide. COmmon standard to the use the same port as the target
+      targetPort: 3000 # Needs to match the container port. Basically to which port it should forward the request to
+      nodePort: 30100 # Has to be within 30000-32767

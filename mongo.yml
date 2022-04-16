@@ -1,0 +1,58 @@
+apiVersion: apps/v1
+kind: Deployment
+
+metadata:
+  name: mongo-deployment
+  labels: 
+    app: mongo
+
+spec:
+  replicas: 1 # How many pods do we want. Since this is a DB, to scale them it's better to use StatefulSet
+  
+  selector: # Label selectors, let's Kubernetes know which Pods belong to which Deployment 
+    matchLabels: 
+      app: mongo # All the pods that match this label, belong to this deployment. 
+
+  template: # Blueprint for the pod / configuration for the pod  
+    
+    metadata:
+      labels: # Required field. Pods can have different names but share the same label
+        app: mongo
+
+    spec:
+      containers:
+      - name: mongodb # Name of the container
+        image: mongo:5.0 # Found in Docker Hub documentation
+        
+        ports:
+        - containerPort: 27017 # Found in Docker Hub documentation
+        
+        env: # Environment variables that MongoDB expects
+        - name: MONGO_INITDB_ROOT_USERNAME
+          valueFrom: 
+            secretKeyRef:
+              name: mongo-secret
+              key: mongo-user
+        
+        - name: MONGO_INITDB_ROOT_PASSWORD
+          valueFrom: 
+            secretKeyRef:
+              name: mongo-secret
+              key: mongo-password
+
+--- # YAML Syntax. We can use this to have multiple YAML configs in 1 file
+
+apiVersion: v1
+kind: Service
+
+metadata:
+  name: mongo-service # Arbitrary name. Endpoint we will use to access MongoDB. 
+  # Needs to be the same one in mongo-config.yml
+
+spec:
+  selector: # Service needs to forward the request that it gets to its endpoint pods.
+    app: mongo # This needs to match the name of the pods that belong to the service
+  ports:
+    - protocol: TCP
+      port: 27017 # Can be any port we decide. COmmon standard to the use the same port as the target
+      targetPort: 27017 # Needs to match the container port. Basically to which port it should forward the request to
